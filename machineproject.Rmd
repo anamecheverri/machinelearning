@@ -1,0 +1,132 @@
+Machine Learning Project
+========================================================
+
+Prepared by Ana Maria Echeverri  
+June 19th, 2015
+
+In this project, the goal is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to predict how well they perform barbell lifts. To generate the data, the participants were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+- The training data for this project is available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+- The test data is available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project can be found at: http://groupware.les.inf.puc-rio.br/har. 
+
+Analysis Process
+========================================================
+**Library used for machine learning analysis: Caret**
+
+```{r, results="hide",warning=FALSE}
+library(caret)
+```
+**Training and Testing datasets are read into data frames**
+```{r, results="hide",cache=TRUE}
+#Read Training Data
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv","pml-training.csv",method="curl")
+training_all<-read.csv("pml-training.csv",sep=",",header=TRUE, na.strings = "NA")
+
+#Read Testing Data
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv","pml-testing.csv",method="curl")
+testing_all<-read.csv("pml-testing.csv",sep=",",header=TRUE, na.strings = "NA")
+```
+**Data Exploration**  
+The following commands are used to explore the data, and see how many observations and variables are in each dataset as well as some basic statistcs about each of their variables
+```{r results="hide"}
+#Exploring Training Data
+dim(training_all)
+head(training_all,2)
+str(training_all)
+summary(training_all)
+
+#Exploring Testing Data
+dim(testing_all)
+head(testing_all,2)
+str(testing_all)
+summary(testing_all)
+```
+**Visual Exploration**
+``` {r}
+boxplot(training_all$X~training_all$classe,col=c("blue"),main="Classe Variable in Training Data")
+```
+**Missing values**  
+After checking to see what variables have missing values, we find that the training dataset has  
+67 variables for which most of their variables are missing, and the testing set has 100 columns with most of thei values missing
+``` {r results="hide"}
+#Missing Values Training Dataset?  #67 columns are found to have 129216 (close to 100%) missing observations
+sumNAs <- sapply(training_all, function(x) sum(is.na(x)))
+
+#Missing Values Testing Dataset?  #100 columns are found to have 20 (100%) missing observations
+sumNAsT <- sapply(testing_all, function(x) sum(is.na(x)))
+```
+**Feature Selection**  
+The first decision made was to remove the participant's names and the row id in the dataset as these will not be valuable for my analysis.  I then proceed to remove the variables that are mostly missing values in both datasets.  I am left with 60 variables (1 target variable to predict and 59 predictors)
+``` {r results="hide"}
+
+#Keep only columns that are not missing most or all of its values in both datasets. #59 predictors
+training_reduced <- training_all[,sumNAs != 19216 & sumNAsT != 20]
+head(training_reduced)
+dim(training_reduced)
+
+#Verify if there are still columns with lots of missing values
+sapply(training_reduced, function(x) sum(is.na(x)))
+
+testing_reduced <- testing_all[,sumNAs != 19216 & sumNAsT != 20]
+head(testing_reduced)
+dim(testing_reduced)
+
+#Verify if there are still columns with lots of missing values
+sapply(testing_reduced, function(x) sum(is.na(x)))
+
+#Remove columns X and user_name
+training_reduced <- subset (training_reduced, select=-c(X,user_name))
+testing_reduced <- subset (testing_reduced, select=-c(X,user_name))
+```
+**Cross Validation**
+Cross-Validation method used: holdout.  The original training dataset was split into training and testing datasets (60%, 40%).
+``` {r }
+#splitting training dataset into training and testing
+inTrain = createDataPartition(y=training_reduced$classe, p = 0.6,list=FALSE)
+training = training_reduced[ inTrain,]
+testing = training_reduced[-inTrain,]
+```
+**Modeling**
+Several models were tested: decision tree, random forest, random forest with principal components, boost, and lda.  Also, I tested stacking the models that provided higher accuracy.  The final model selected was a **random forest** with an accuracy when forecasting the testing data (not seen before) of 0.9991. Out of sample error was extremely small(less than 1%) in most of the models tested except for the decision tree (47%) and lda (19%).
+
+**Training the random forest model**
+``` {r,results='hide',cache=TRUE}
+# random forest accuracy 0.9991  
+set.seed(125)  
+modrf <- train(classe~.,method="rf",data=training)
+```
+**Checking accuracy of model in testing data**
+```{r}
+predictionsrf <- predict(modrf,newdata=testing)  
+confusionMatrix(predictionsrf, testing$classe)  
+```
+**Predicting the original testing data**
+I will now use the selected "best" model: random forest to predict the classe variable for the original testing dataset with 20 observations.
+
+**Predict final testing data**
+predfinal <- predict(modrf,newdata=testing_reduced)  
+answers <-  as.character(predfinal)  
+answers  
+
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(answers)
+
+**NOTES**
+I had trouble knitting the execution of the "train" function. I had to decide to show the code but not execute it. It would work as R code, but not within markdown.
+
+
+
