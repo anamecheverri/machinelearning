@@ -139,6 +139,50 @@ inTrain = createDataPartition(y=training_reduced$classe, p = 0.6,list=FALSE)
 training = training_reduced[ inTrain,]
 testing = training_reduced[-inTrain,]</code></pre>
 <p><strong>Modeling</strong> Several models were tested: decision tree, random forest, random forest with principal components, boost, and lda. Also, I tested stacking the models that provided higher accuracy. The final model selected was a <strong>random forest</strong> with an accuracy when forecasting the testing data (not seen before) of 0.9991. Out of sample error was extremely small(less than 1%) in most of the models tested except for the decision tree (47%) and lda (19%).</p>
+<p>I am including the code but not running it as these models take long to execute</p>
+<pre class="r"><code>#Fitting a tree  accuracy: 53%
+set.seed(125)
+modtree &lt;- train(classe~.,method=&quot;rpart&quot;,data=training)
+print(modtree$finalModel)
+predictions &lt;- predict(modtree,newdata=testing)
+predictions
+confusionMatrix(predictions, testing$classe)
+
+# random forest accuracy 0.9991  
+set.seed(125)
+modrf &lt;- train(classe~.,method=&quot;rf&quot;,data=training)
+print(modrf$finalModel)
+predictionsrf &lt;- predict(modrf,newdata=testing)
+confusionMatrix(predictionsrf, testing$classe)
+
+# random forest pca
+set.seed(125)
+modrfpca &lt;- train(classe~.,method=&quot;rf&quot;,data=training,preProcess=&quot;pca&quot;)
+print(modrfpca$finalModel)
+predictionsrfpca &lt;- predict(modrfpca,newdata=testing)
+confusionMatrix(predictionsrfpca, testing$classe)
+
+# boost accuracy  .9961
+set.seed(125)
+modboost &lt;- train(classe~.,method=&quot;gbm&quot;,data=training,verbose=FALSE)
+print(modboost$finalModel)
+predictionsboost &lt;- predict(modboost,newdata=testing)
+confusionMatrix(predictionsboost, testing$classe)
+
+# lda accuracy 0.81
+set.seed(125)
+modlda &lt;- train(classe~.,method=&quot;lda&quot;,data=training,verbose=FALSE)
+print(modlda$finalModel)
+predictionslda &lt;- predict(modlda,newdata=testing)
+confusionMatrix(predictionslda, testing$classe)
+
+#stacking
+set.seed(125)
+preDF=data.frame(predictionsrf,predictionsboost,predictionslda,classe=testing$classe)
+preDF
+combrf &lt;- train(classe~.,method=&quot;rf&quot;,data=preDF)
+comPred &lt;- predict(combrf,newdata=preDF)
+confusionMatrix(comPred,testing$classe)</code></pre>
 <p><strong>Training the random forest model</strong><br />This model predicts withh 99% accuracy. And I got the prediction for the 20 observations all correct</p>
 <div id="code-below" class="section level7">
 <p>CODE BELOW</p>
