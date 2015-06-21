@@ -22,6 +22,9 @@ Analysis Process
 
 ```{r, results="hide",warning=FALSE}
 library(caret)
+library(plyr)
+library(rpart)
+library(randomForest)
 ```
 **Training and Testing datasets are read into data frames**
 ```{r, results="hide",cache=TRUE}
@@ -96,14 +99,25 @@ testing = training_reduced[-inTrain,]
 **Modeling**
 Several models were tested: decision tree, random forest, random forest with principal components, boost, and lda.  Also, I tested stacking the models that provided higher accuracy.  The final model selected was a **random forest** with an accuracy when forecasting the testing data (not seen before) of 0.9991. Out of sample error was extremely small(less than 1%) in most of the models tested except for the decision tree (47%) and lda (19%).
 
-**Training the random forest model**
-``` {r,results='hide',cache=TRUE}
+**Training the random forest model**  
+This model predicts withh 99% accuracy. And I got the prediction for the 20 observations all correct
+
+#######CODE BELOW#####
 # random forest accuracy 0.9991  
+```{r,cache=TRUE}
 set.seed(125)  
-modrf <- train(classe~.,method="rf",data=training)
+my_saved_model <- "my_model.Rds"
+if (file.exists(my_saved_model)) {
+    # Read the model in and assign it to a variable.
+    modrf <- readRDS(my_saved_model)
+} else {
+    # Otherwise, run the training.
+    modrf <- train(classe~.,method="rf",data=training)
+}
+
 ```
 **Checking accuracy of model in testing data**
-```{r}
+``` {r}
 predictionsrf <- predict(modrf,newdata=testing)  
 confusionMatrix(predictionsrf, testing$classe)  
 ```
@@ -111,6 +125,7 @@ confusionMatrix(predictionsrf, testing$classe)
 I will now use the selected "best" model: random forest to predict the classe variable for the original testing dataset with 20 observations.
 
 **Predict final testing data**
+```{r}
 predfinal <- predict(modrf,newdata=testing_reduced)  
 answers <-  as.character(predfinal)  
 answers  
@@ -124,9 +139,8 @@ pml_write_files = function(x){
 }
 
 pml_write_files(answers)
+```
 
-**NOTES**
-I had trouble knitting the execution of the "train" function. I had to decide to show the code but not execute it. It would work as R code, but not within markdown.
 
 
 
